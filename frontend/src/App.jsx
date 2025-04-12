@@ -1,13 +1,15 @@
 import React from "react";
 import KanbanBoard from "./components/KanbanBoard";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { DndProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 
-function App() {
-  return (
-    <div className="App">
-      <h1>Real-time Kanban Board</h1>
+const App = () => (
+  <ErrorBoundary>
+    <DndProvider backend={HTML5Backend}>
       <KanbanBoard />
-    </div>
-  );
-}
+    </DndProvider>
+  </ErrorBoundary>
+);
 
 export default App;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useDrag } from "react-dnd";
 import Select from "react-select";
 
@@ -7,12 +7,12 @@ const Task = ({ task, onUpdate, onDelete }) => {
   const [description, setDescription] = useState(task.description);
   const [priority, setPriority] = useState(task.priority);
   const [category, setCategory] = useState(task.category);
-  const [attachments, setAttachments] = useState(task.attachments);
+  const [attachments, setAttachments] = useState(task.attachments || []);
   const [filePreview, setFilePreview] = useState(null);
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: "TASK",
-    item: { id: task.id },
+    item: { id: task._id },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
@@ -43,10 +43,16 @@ const Task = ({ task, onUpdate, onDelete }) => {
   };
 
   const handleUpdate = () => {
-    onUpdate({ ...task, title, description, priority, category, attachments });
+    onUpdate({
+      ...task,
+      title,
+      description,
+      priority,
+      category,
+      attachments,
+    });
   };
 
-  // Cleanup the file preview URL when the component unmounts
   useEffect(() => {
     return () => {
       if (filePreview) {
@@ -59,14 +65,12 @@ const Task = ({ task, onUpdate, onDelete }) => {
     <div
       ref={drag}
       style={{
+        backgroundColor: "#fff",
         border: "1px solid #ccc",
         borderRadius: "6px",
         padding: "12px",
         marginBottom: "10px",
-        backgroundColor: "#fff",
         opacity: isDragging ? 0.5 : 1,
-        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-        transition: "box-shadow 0.2s",
       }}
     >
       <input
@@ -74,67 +78,40 @@ const Task = ({ task, onUpdate, onDelete }) => {
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onBlur={handleUpdate}
-        style={{
-          width: "100%",
-          padding: "8px",
-          marginBottom: "8px",
-          borderRadius: "4px",
-          border: "1px solid #ccc",
-        }}
+        style={{ width: "100%", marginBottom: "8px" }}
       />
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         onBlur={handleUpdate}
-        style={{
-          width: "100%",
-          padding: "8px",
-          marginBottom: "8px",
-          borderRadius: "4px",
-          border: "1px solid #ccc",
-          resize: "vertical",
+        style={{ width: "100%", marginBottom: "8px" }}
+      />
+      <Select
+        value={priorityOptions.find((opt) => opt.value === priority)}
+        options={priorityOptions}
+        onChange={(opt) => {
+          setPriority(opt.value);
+          handleUpdate();
         }}
       />
-      <div style={{ marginBottom: "8px" }}>
-        <Select
-          value={priorityOptions.find((option) => option.value === priority)}
-          options={priorityOptions}
-          onChange={(opt) => {
-            setPriority(opt.value);
-            handleUpdate();
-          }}
-        />
-      </div>
-      <div style={{ marginBottom: "8px" }}>
-        <Select
-          value={categoryOptions.find((option) => option.value === category)}
-          options={categoryOptions}
-          onChange={(opt) => {
-            setCategory(opt.value);
-            handleUpdate();
-          }}
-        />
-      </div>
+      <Select
+        value={categoryOptions.find((opt) => opt.value === category)}
+        options={categoryOptions}
+        onChange={(opt) => {
+          setCategory(opt.value);
+          handleUpdate();
+        }}
+      />
       <input type="file" onChange={handleFileChange} />
-      {filePreview && (
-        <img
-          src={filePreview}
-          alt="Preview"
-          style={{
-            maxWidth: "100px",
-            marginTop: "10px",
-            borderRadius: "4px",
-          }}
-        />
-      )}
+      {filePreview && <img src={filePreview} alt="Preview" width="100" />}
       <button
-        onClick={() => onDelete(task.id)}
+        onClick={() => onDelete(task._id)}
         style={{
           marginTop: "10px",
           backgroundColor: "#dc3545",
           color: "#fff",
-          border: "none",
           padding: "6px 12px",
+          border: "none",
           borderRadius: "4px",
           cursor: "pointer",
         }}

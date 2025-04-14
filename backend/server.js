@@ -1,9 +1,16 @@
+// backend/index.js
 import express from "express";
 import http from "http";
 import { Server } from 'socket.io';
+import cors from "cors";
+import connectDB from './db/db.js';
+import Task from './db/model.js';
 
 const app = express();
+app.use(cors({ origin: 'http://localhost:3000', methods: ['GET', 'POST'] }));
+
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: {
     origin: 'http://localhost:3000',
@@ -11,37 +18,57 @@ const io = new Server(server, {
   },
 });
 
-let tasks = [
-  { id: '1', title: 'Task A', description: 'Description A', column: 'To Do', priority: 'Low', category: 'Feature', attachments: [] },
-  { id: '2', title: 'Task B', description: 'Description B', column: 'In Progress', priority: 'Medium', category: 'Bug', attachments: [] },
-  { id: '3', title: 'Task C', description: 'Description C', column: 'Done', priority: 'High', category: 'Enhancement', attachments: [] },
-];
+connectDB();
 
 io.on('connection', (socket) => {
   console.log('A user connected');
 
-  socket.emit('sync:tasks', tasks);
+  Task.find()
+    .then((tasks) => {
+      socket.emit('sync:tasks', tasks);
+    })
+    .catch((err) => {
+      console.error('Error fetching tasks:', err);
+      socket.emit('sync:tasks', []);
+    });
 
-  socket.on('task:create', (task) => {
-    tasks.push(task);
-    io.emit('sync:tasks', tasks);
+  socket.on('task:create', async (taskData) => {
+    try {
+      const newTask = new Task(taskData);
+      await newTask.save();
+      io.emit('sync:tasks', await Task.find());
+    } catch (err) {
+      console.error('Error creating task:', err);
+    }
   });
 
-  socket.on('task:update', (updatedTask) => {
-    tasks = tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task));
-    io.emit('sync:tasks', tasks);
+  socket.on('task:update', async (updatedTask) => {
+    try {
+      await Task.findByIdAndUpdate(updatedTask.id, updatedTask, { new: true });
+      io.emit('sync:tasks', await Task.find());
+    } catch (err) {
+      console.error('Error updating task:', err);
+    }
   });
 
-  socket.on('task:move', ({ taskId, newColumn }) => {
-    tasks = tasks.map((task) =>
-      task.id === taskId ? { ...task, column: newColumn } : task
+  socket.on("task:move", async ({ taskId, newColumn }) => {
+    const updatedTask = await Task.findByIdAndUpdate(
+      taskId,
+      { column: newColumn },
+      { new: true }
     );
-    io.emit('sync:tasks', tasks);
+    const allTasks = await Task.find();
+    io.emit("sync:tasks", allTasks);
   });
+  
 
-  socket.on('task:delete', (taskId) => {
-    tasks = tasks.filter((task) => task.id !== taskId);
-    io.emit('sync:tasks', tasks);
+  socket.on('task:delete', async (taskId) => {
+    try {
+      await Task.findByIdAndDelete(taskId);
+      io.emit('sync:tasks', await Task.find());
+    } catch (err) {
+      console.error('Error deleting task:', err);
+    }
   });
 
   socket.on('disconnect', () => {

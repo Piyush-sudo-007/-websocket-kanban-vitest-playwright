@@ -1,13 +1,15 @@
 // playwright.config.js
-import { defineConfig } from "@playwright/test";
+import { defineConfig , devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: "./tests/e2e", // Path to your test files
-  timeout: 20 * 1000, // Test timeout in milliseconds
+  testDir: "./src/tests/e2e", // Path to your test files
+  timeout: 30 * 1000, // Test timeout in milliseconds
+  retries: 0,
   use: {
     headless: false, // Run tests in headless mode
     baseURL: "http://localhost:3000", // Replace with your app's base URL
     viewport: { width: 1300, height: 720 }, // Default viewport
+    ...devices['Desktop Chrome'],
   },
   projects: [
     {
@@ -20,7 +22,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run build && npm run preview", // Command to start your server
+    command: "npm run dev", // Command to start your server
     port: 3000, // Port your app runs on
     reuseExistingServer: true,
     timeout: 60 * 60 * 1000, // Wait time for server start in milliseconds

@@ -1,23 +1,21 @@
-import React, { useState, useEffect } from "react";
-import { useDrop } from "react-dnd";
-import { DndProvider } from "react-dnd";
+import React, { useEffect, useState } from "react";
 import io from "socket.io-client";
-import Task from "./Task";
+import Column from "./Column";
 import TaskForm from "./TaskForm";
+import Modal from "react-modal";
 import TaskProgressGraph from "./TaskProgressGraph";
 
 const socket = io("http://localhost:5000");
+Modal.setAppElement("#root");
 
 const KanbanBoard = () => {
   const [tasks, setTasks] = useState([]);
-  const [showForm, setShowForm] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    socket.on("sync:tasks", (updatedTasks) => {
-      console.log("Received tasks from server:", updatedTasks);
-      setTasks(updatedTasks);
-      setLoading(false);
+    socket.on("sync:tasks", (data) => {
+      console.log("Received tasks from server: ", data);
+      setTasks(data);
     });
 
     return () => {
@@ -25,123 +23,85 @@ const KanbanBoard = () => {
     };
   }, []);
 
-  const moveTask = (taskId, newColumn) => {
+  const handleAddTask = (newTask) => {
+    socket.emit("task:create", newTask);
+  };
+
+  const handleTaskMove = (taskId, newColumn) => {
     socket.emit("task:move", { taskId, newColumn });
   };
 
-  const addTask = (newTask) => {
-    socket.emit("task:create", newTask);
-    setShowForm(false);
-  };
-
-  const updateTask = (updatedTask) => {
+  const handleTaskUpdate = (updatedTask) => {
     socket.emit("task:update", updatedTask);
   };
 
-  const deleteTask = (taskId) => {
+  const handleTaskDelete = (taskId) => {
     socket.emit("task:delete", taskId);
   };
 
-  const [{ isOver: todoIsOver }, todoDrop] = useDrop(() => ({
-    accept: "TASK",
-    drop: (item) => moveTask(item.id, "To Do"),
-    collect: (monitor) => ({
-      isOver: monitor.isOver(),
-    }),
-  }));
-  const [{ isOver: inProgressIsOver }, inProgressDrop] = useDrop(() => ({
-    accept: "TASK",
-    drop: (item) => moveTask(item.id, "In Progress"),
-    collect: (monitor) => ({
-      isOver: monitor.isOver(),
-    }),
-  }));
-  const [{ isOver: doneIsOver }, doneDrop] = useDrop(() => ({
-    accept: "TASK",
-    drop: (item) => moveTask(item.id, "Done"),
-    collect: (monitor) => ({
-      isOver: monitor.isOver(),
-    }),
-  }));
-
-  if (loading) return <div>Loading...</div>;
+  const columns = ["To Do", "In Progress", "Done"];
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Segoe UI, sans-serif" }}>
-      <button
-        onClick={() => setShowForm(true)}
-        style={{
-          marginBottom: "20px",
-          padding: "10px 20px",
-          backgroundColor: "#007bff",
-          color: "#fff",
-          border: "none",
-          borderRadius: "4px",
-          cursor: "pointer",
-        }}
-      >
-        Add Task
-      </button>
-      {showForm && (
-        <div
-          style={{
-            marginBottom: "20px",
-            padding: "15px",
-            backgroundColor: "#f8f9fa",
-            borderRadius: "8px",
-            boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
-          }}
-        >
-          <TaskForm onAddTask={addTask} onClose={() => setShowForm(false)} />
-        </div>
-      )}
+    <div style={{ padding: "20px" }}>
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
-          gap: "20px",
-          flexWrap: "wrap",
+          alignItems: "center",
+          marginBottom: "20px",
         }}
       >
-        {[
-          { name: "To Do", ref: todoDrop, isOver: todoIsOver },
-          {
-            name: "In Progress",
-            ref: inProgressDrop,
-            isOver: inProgressIsOver,
-          },
-          { name: "Done", ref: doneDrop, isOver: doneIsOver },
-        ].map((col) => (
-          <div
-            key={col.name}
-            ref={col.ref}
-            style={{
-              flex: "1 1 30%",
-              minWidth: "300px",
-              backgroundColor: col.isOver ? "#f1f1f1" : "#ffffff",
-              border: "1px solid #ddd",
-              borderRadius: "8px",
-              padding: "15px",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-              transition: "background-color 0.3s ease",
-            }}
-          >
-            <h3 style={{ marginBottom: "15px" }}>{col.name}</h3>
-            {tasks
-              .filter((task) => task.column === col.name)
-              .map((task) => (
-                <Task
-                  key={task.id}
-                  task={task}
-                  onUpdate={updateTask}
-                  onDelete={deleteTask}
-                />
-              ))}
-          </div>
+        <h2>Real-time Kanban Board</h2>
+        <button
+          onClick={() => setIsModalOpen(true)}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: "#007bff",
+            color: "#fff",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+          }}
+        >
+          + Add Task
+        </button>
+      </div>
+
+      <div style={{ display: "flex", gap: "20px" }}>
+        {columns.map((column) => (
+          <Column
+            key={column}
+            column={column}
+            tasks={tasks.filter((task) => task.column === column)}
+            onDropTask={handleTaskMove}
+            onUpdateTask={handleTaskUpdate}
+            onDeleteTask={handleTaskDelete}
+          />
         ))}
       </div>
 
-      <div style={{ marginTop: "30px" }}>
+      <Modal
+        isOpen={isModalOpen}
+        onRequestClose={() => setIsModalOpen(false)}
+        style={{
+          content: {
+            maxWidth: "400px",
+            margin: "auto",
+            padding: "20px",
+            borderRadius: "8px",
+          },
+        }}
+      >
+        <h3>Add New Task</h3>
+        <TaskForm
+          onAddTask={(task) => {
+            handleAddTask(task);
+            setIsModalOpen(false);
+          }}
+          onClose={() => setIsModalOpen(false)}
+        />
+      </Modal>
+      <div style={{ marginBottom: "30px" }}>
         <TaskProgressGraph tasks={tasks} />
       </div>
     </div>

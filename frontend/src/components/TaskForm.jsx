@@ -13,6 +13,8 @@ const TaskForm = ({ onAddTask, onClose }) => {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("Low");
   const [category, setCategory] = useState("Feature");
+  const [attachments, setAttachments] = useState([]);
+  const [filePreview, setFilePreview] = useState(null);
 
   const priorityOptions = [
     { value: "Low", label: "Low" },
@@ -25,6 +27,18 @@ const TaskForm = ({ onAddTask, onClose }) => {
     { value: "Feature", label: "Feature" },
     { value: "Enhancement", label: "Enhancement" },
   ];
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setAttachments([...attachments, file.name]);
+      if (file.type.startsWith("image/")) {
+        setFilePreview(URL.createObjectURL(file));
+      } else {
+        setFilePreview(null);
+      }
+    }
+  };
 
   const handleSubmit = () => {
     if (!title.trim() || !description.trim()) {
@@ -39,14 +53,15 @@ const TaskForm = ({ onAddTask, onClose }) => {
       column: "To Do",
       priority,
       category,
-      attachments: [],
+      attachments,
     });
 
-    // Optionally reset form and close
     setTitle("");
     setDescription("");
     setPriority("Low");
     setCategory("Feature");
+    setAttachments([]);
+    setFilePreview(null);
     onClose();
   };
 
@@ -91,6 +106,18 @@ const TaskForm = ({ onAddTask, onClose }) => {
         options={categoryOptions}
         onChange={(opt) => setCategory(opt.value)}
       />
+      <input type="file" onChange={handleFileChange} />
+      {filePreview && (
+        <img
+          src={filePreview}
+          alt="Preview"
+          style={{
+            maxWidth: "100px",
+            marginTop: "10px",
+            borderRadius: "4px",
+          }}
+        />
+      )}
       <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
         <button
           onClick={handleSubmit}

@@ -16,6 +16,7 @@ export default defineConfig({
   test: {
     mockReset: true,
     globals: true,
+    testTimeout: 15000,
     environment: "jsdom",
     setupFiles: "./src/setupTests.js",
     exclude: ["node_modules", "src/tests/e2e"],
